@@ -36,10 +36,6 @@ pub enum Opt {
         #[structopt(long)]
         use_cross: bool,
 
-        /// Path to `strip(1)`
-        #[structopt(long, value_name("PATH"))]
-        strip_exe: Option<PathBuf>,
-
         /// Do not apply `upx`
         #[structopt(long)]
         no_upx: bool,
@@ -127,7 +123,6 @@ impl Default for Shell {
 pub fn run(opt: Opt, shell: &mut Shell) -> anyhow::Result<()> {
     let Opt::ExecutablePayload {
         use_cross,
-        strip_exe,
         no_upx,
         output,
         src,
@@ -162,7 +157,6 @@ pub fn run(opt: Opt, shell: &mut Shell) -> anyhow::Result<()> {
         &bin.name,
         use_cross,
         &target,
-        strip_exe.map(|p| cwd.join(p)).as_deref(),
         no_upx,
     )?;
 
@@ -264,7 +258,6 @@ fn build(
     bin_name: &str,
     use_cross: bool,
     target: &str,
-    strip_exe: Option<&Path>,
     no_upx: bool,
 ) -> anyhow::Result<String> {
     fn run_command(
@@ -325,12 +318,6 @@ fn build(
     std::fs::copy(&artifact_path, tempdir.path().join(artifact_file_name))?;
 
     let artifact_path = tempdir.path().join(artifact_file_name);
-
-    let program = strip_exe.unwrap_or_else(|| "strip".as_ref());
-    if let Ok(program) = which::which_in(program, env::var_os("PATH"), manifest_dir) {
-        let args = [OsStr::new("-s"), artifact_path.as_ref()];
-        run_command(shell, manifest_dir, program, &args, |_| ())?;
-    }
 
     if !no_upx {
         if let Ok(program) = which::which_in("upx", env::var_os("PATH"), manifest_dir) {
